@@ -1,0 +1,29 @@
+{
+  "name": "scoops-and-smiles",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "tsx watch server/index.ts",
+    "auth:hash": "node server/hash-password.mjs",
+    "build": "tsc -b && vite build",
+    "typecheck:server": "tsc -p tsconfig.server.json --noEmit",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "latest",
+    "vite": "8.3.1",
+    "typescript": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "dotenv": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "tsx": "latest"
+  }
+}
