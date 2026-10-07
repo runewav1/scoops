@@ -14,9 +14,9 @@ pnpm dev
 - Flavor detail: `/flavors/:id`
 - Story: `/story`
 - Visit: `/visit`
-- Ingredients: `/ingredients`
+- Additional toppings: `/toppings`
 - Staff login and overview: `/admin`
-- Transactions, catalog, ingredients, settings, and help: `/admin/transactions`, `/admin/catalog`, `/admin/ingredients`, `/admin/settings`, `/admin/help`
+- Transactions, catalog, toppings, settings, and help: `/admin/transactions`, `/admin/catalog`, `/admin/toppings`, `/admin/settings`, `/admin/help`
 
 `pnpm dev` serves the site and the API together, including `POST /api/staff/login`. Configure the staff account in `.env` with `pnpm auth:hash`.
 

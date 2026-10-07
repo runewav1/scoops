@@ -1,11 +1,14 @@
-import { useEffect, useState } from 'react'
-import { ArrowUpRight, ChevronRight, Clock3, Cookie, IceCreamBowl, LockKeyhole, Sparkles, Star, Store } from 'lucide-react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { ArrowUpRight, ChevronRight, Clock3, Cookie, Sparkles, Star, Store } from 'lucide-react'
+import logo from '../assets/sns_logo.png'
 import { fetchCatalog, fetchSettings, fetchToppings } from './lib/api'
 import { money } from './lib/format'
 import type { Product, ProductCategory, ShopSettings, Topping } from './lib/models'
 import { RouteLink, useRoute } from './router'
 
 const categoryLabels: Record<ProductCategory, string> = { scoops: 'Scoops', pints: 'Pints', quarts: 'Quarts', sundaes: 'Sundaes', drinks: 'Drinks' }
+const shopEmail = 'hello@scoopsandsmiles.example'
+const shopPhone = '(404) 555-0136'
 
 function useCatalog() {
   const [products, setProducts] = useState<Product[]>([])
@@ -22,35 +25,86 @@ export function Storefront() {
   const catalog = useCatalog()
   const flavorId = path.startsWith('/flavors/') ? decodeURIComponent(path.slice('/flavors/'.length)) : ''
   const menuCategory = path.startsWith('/menu/') ? path.slice('/menu/'.length) as ProductCategory : ''
-  let page = <HomePage {...catalog} />
+  let page = <HomePage products={catalog.products} />
   if (path === '/menu' || path.startsWith('/menu/')) page = <MenuPage {...catalog} category={menuCategory} />
   else if (flavorId) page = <FlavorPage {...catalog} flavorId={flavorId} />
   else if (path === '/story') page = <StoryPage />
   else if (path === '/visit') page = <VisitPage />
-  else if (path === '/ingredients') page = <IngredientsPage />
+  else if (path === '/toppings') page = <ToppingsPage />
   else if (path !== '/') page = <MissingPage />
 
   return (
+    <>
     <div className="site-shell">
       <header className="topbar">
-        <RouteLink to="/" className="wordmark"><span className="logo-mark"><IceCreamBowl size={22} strokeWidth={2.4} /></span><span>Scoops <i>&</i> Smiles</span></RouteLink>
+        <RouteLink to="/" className="wordmark"><img className="brand-logo" src={logo} alt="Scoops & Smiles" /></RouteLink>
         <nav className="main-nav">
           <RouteLink to="/menu">The menu</RouteLink>
           <RouteLink to="/story">Our story</RouteLink>
           <RouteLink to="/visit">Come say hi</RouteLink>
-          <RouteLink to="/ingredients">Ingredients</RouteLink>
+          <RouteLink to="/toppings">Toppings</RouteLink>
         </nav>
-        <div className="topbar-actions">
-          <RouteLink to="/admin" className="text-button"><LockKeyhole size={16} /> Staff login</RouteLink>
-        </div>
       </header>
       <main>{page}</main>
-      <footer className="footer"><RouteLink to="/" className="wordmark"><span className="logo-mark"><IceCreamBowl size={20} /></span><span>Scoops <i>&</i> Smiles</span></RouteLink><span>Made for happy little moments.</span><span>© 2026 S&S</span></footer>
+      <SiteFooter />
     </div>
+    <FlavorOfWeek flavor={catalog.flavorOfWeek} />
+    </>
   )
 }
 
-function HomePage({ products, flavorOfWeek, error }: { products: Product[]; flavorOfWeek: Product | null; error: string }) {
+function SocialIcon({ children, label, href }: { children: ReactNode; label: string; href: string }) {
+  return <a href={href} target="_blank" rel="noreferrer" aria-label={label}>{children}</a>
+}
+
+function SiteFooter() {
+  const [settings, setSettings] = useState<ShopSettings | null>(null)
+  const [note, setNote] = useState('')
+  useEffect(() => { fetchSettings().then((result) => setSettings(result.settings)).catch(() => setSettings(null)) }, [])
+  const street = settings?.address_line || '18 Honeycomb Lane'
+  const city = settings?.address_city || 'Maplewood, GA 30309'
+  const send = (event: FormEvent) => {
+    event.preventDefault()
+    const body = encodeURIComponent(note.trim())
+    window.location.href = `mailto:${shopEmail}?subject=${encodeURIComponent('Note for Scoops & Smiles')}&body=${body}`
+  }
+  return (
+    <footer className="footer">
+      <div className="footer-grid">
+        <div className="footer-social">
+          <SocialIcon label="Instagram" href="https://www.instagram.com/scoopsandsmiles"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r="1" fill="currentColor" stroke="none" /></svg></SocialIcon>
+          <SocialIcon label="Facebook" href="https://www.facebook.com/scoopsandsmiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v2H7v4h2v7h4v-7h2.6l.4-4H13V9c0-.6.4-1 1-1z" /></svg></SocialIcon>
+          <SocialIcon label="TikTok" href="https://www.tiktok.com/@scoopsandsmiles"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4c.6 2.4 2.2 4 4.6 4.4v2.4c-1.6 0-3-.5-4.2-1.4v6.4c0 3.2-2.4 5.6-5.6 5.6S3.2 18.9 3.2 15.7 5.6 10 8.8 10c.4 0 .8 0 1.2.1v2.6c-.4-.2-.8-.3-1.2-.3-1.8 0-3.2 1.5-3.2 3.3s1.4 3.3 3.2 3.3 3.2-1.5 3.2-3.3V4h2z" /></svg></SocialIcon>
+        </div>
+        <div className="footer-contact">
+          <a href="tel:+14045550136">{shopPhone}</a>
+          <a href={`mailto:${shopEmail}`}>{shopEmail}</a>
+          {settings?.hours && <span>{settings.hours}</span>}
+        </div>
+        <address>{street}<br />{city}</address>
+        <form className="email-composer" onSubmit={send}>
+          <label htmlFor="shop-note">Write to the shop</label>
+          <textarea id="shop-note" rows={3} required value={note} onChange={(event) => setNote(event.target.value)} placeholder="A note for the counter" />
+          <button className="button button-dark" type="submit">Compose email</button>
+        </form>
+      </div>
+      <div className="footer-end"><span>© 2026 Scoops & Smiles</span><RouteLink to="/admin" className="staff-login">Staff login</RouteLink></div>
+    </footer>
+  )
+}
+
+function FlavorOfWeek({ flavor }: { flavor: Product | null }) {
+  if (!flavor) return null
+  return (
+    <RouteLink to={`/flavors/${flavor.id}`} className="flavor-week">
+      <Star size={14} fill="currentColor" />
+      <span>Flavor of the week</span>
+      <strong>{flavor.name}</strong>
+    </RouteLink>
+  )
+}
+
+function HomePage({ products }: { products: Product[] }) {
   const featured = products.filter((product) => product.isFeatured).slice(0, 4)
   return (
     <>
@@ -65,16 +119,13 @@ function HomePage({ products, flavorOfWeek, error }: { products: Product[]; flav
           </div>
           <div className="hero-note"><span className="avatar-stack"><span>🍓</span><span>🍦</span><span>✨</span></span><span><strong>Neighbors welcome</strong> from noon until the case is quiet</span></div>
         </div>
-        <div className="hero-art" aria-label={flavorOfWeek ? `${flavorOfWeek.name}, flavor of the week` : 'A cheerful ice cream sundae'}>
-          <div className="sun-disc" />
-          <div className="sprinkle sprinkle-one" /><div className="sprinkle sprinkle-two" /><div className="sprinkle sprinkle-three" />
-          <div className="ice-cream-illustration"><div className="scoop scoop-pink" /><div className="scoop scoop-cream" /><div className="scoop scoop-green" /><div className="cone" /></div>
-          <div className="art-label"><Star size={14} fill="currentColor" /> flavor of the week <strong>{flavorOfWeek?.name ?? (error || 'Loading…')}</strong></div>
+        <div className="hero-art">
+          <img src={logo} alt="" />
         </div>
       </section>
       <section className="ticker"><span>Made with real cream</span><b>✳</b><span>Browse in the shop</span><b>✳</b><span>Neighbors welcome</span><b>✳</b><span>Made with real cream</span></section>
       <section className="section-pad story-section">
-        <div className="section-heading"><div><p className="eyebrow">Start somewhere</p><h2>A few doors<br /><em>into the shop.</em></h2></div><p>The counter, the story, and the visit details each live on their own page.</p></div>
+        <div className="section-heading"><div><p className="eyebrow">Start somewhere</p><h2>A few doors<br /><em>into the shop.</em></h2></div><p>The case, the people who make it, and a reason to stop by.</p></div>
         <div className="story-grid">
           <RouteLink to="/menu" className="story-card story-card-photo"><span className="handwritten">the<br />case<br />today</span><div className="photo-placeholder">See the<br /><strong>full menu.</strong></div></RouteLink>
           <RouteLink to="/story" className="story-card story-card-note"><Cookie size={27} /><h3>A bit of joy,<br />in every bite.</h3><p>Small batches, ingredients we can pronounce, and flavors with a point of view.</p><span>Read the story <ChevronRight size={16} /></span></RouteLink>
@@ -134,7 +185,7 @@ function StoryPage() {
       <div className="section-heading"><div><p className="eyebrow">A little about us</p><h2>Ice cream with<br /><em>a point of view.</em></h2></div><p>We make our ice cream in small batches. The familiar flavors stay on the board because people ask for them. The stranger ones stay because they taste like a decision.</p></div>
       <div className="story-grid">
         <div className="story-card story-card-photo"><span className="handwritten">made<br />around<br />here</span><div className="photo-placeholder">The good stuff<br /><strong>is in the details.</strong></div></div>
-        <div className="story-card story-card-note"><Cookie size={27} /><h3>A bit of joy,<br />in every bite.</h3><p>From the first scoop of the day to the last pint in the freezer, the counter is for the tiny rituals that make a day feel like yours.</p><RouteLink to="/ingredients">Our ingredients <ChevronRight size={16} /></RouteLink></div>
+        <div className="story-card story-card-note"><Cookie size={27} /><h3>A bit of joy,<br />in every bite.</h3><p>From the first scoop of the day to the last pint in the freezer, the counter is for the tiny rituals that make a day feel like yours.</p><RouteLink to="/toppings">Additional toppings <ChevronRight size={16} /></RouteLink></div>
         <div className="stat-card"><div><strong>40+</strong><span>sizes and<br />flavors</span></div><div><strong>01</strong><span>very happy<br />neighborhood</span></div><div><strong>∞</strong><span>excuses for<br />ice cream</span></div></div>
       </div>
     </section>
@@ -148,7 +199,7 @@ function VisitPage() {
     <section className="visit-section section-pad interior-page">
       <div><p className="eyebrow">Come as you are</p><h2>Your table is<br /><em>waiting.</em></h2></div>
       <div className="visit-details">
-        <div><Clock3 size={22} /><span><strong>{settings?.hours ?? 'Hours loading…'}</strong>Walk-up counter, no online bag</span></div>
+        <div><Clock3 size={22} /><span><strong>{settings?.hours ?? 'Hours loading…'}</strong>Walk-up counter</span></div>
         <div><Store size={22} /><span><strong>{settings?.address_line ?? '18 Honeycomb Lane'}</strong>{settings?.address_city ?? 'Maplewood, GA 30309'}</span></div>
         <a className="button button-light" href="https://maps.google.com/?q=18+Honeycomb+Lane+Maplewood+GA" target="_blank" rel="noreferrer">Get directions <ArrowUpRight size={16} /></a>
       </div>
@@ -156,15 +207,15 @@ function VisitPage() {
   )
 }
 
-function IngredientsPage() {
+function ToppingsPage() {
   const [toppings, setToppings] = useState<Topping[]>([])
   useEffect(() => { fetchToppings().then((result) => setToppings(result.toppings)).catch(() => setToppings([])) }, [])
   return (
     <section className="section-pad interior-copy">
-      <p className="eyebrow">In the case</p>
-      <h2>Toppings and<br /><em>finishes.</em></h2>
-      <p>These sit beside the scoops. The counter adds them when a transaction is built in the back office.</p>
-      <ul className="ingredient-list">{toppings.map((topping) => <li key={topping.id}><strong>{topping.name}</strong><span>{topping.category}</span><b>{money.format(topping.price)}</b></li>)}</ul>
+      <p className="eyebrow">Add to a scoop</p>
+      <h2>Additional<br /><em>toppings.</em></h2>
+      <p>Sprinkles, sauces, and a few fresh finishes for the scoop.</p>
+      <ul className="topping-list">{toppings.map((topping) => <li key={topping.id}><strong>{topping.name}</strong><span>{topping.category}</span><b>{money.format(topping.price)}</b></li>)}</ul>
     </section>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { ArrowUpRight, Bell, ChevronRight, CircleHelp, ClipboardList, Coffee, IceCreamBowl, LayoutDashboard, LockKeyhole, LogIn, Menu, Package, Plus, Search, Settings2, Sparkles, Store } from 'lucide-react'
+import logo from '../assets/sns_logo.png'
 import { createTransaction, fetchCatalog, fetchReport, fetchSettings, fetchToppings, fetchTransactions, updateProduct, updateSettings, updateTransaction } from './lib/api'
 import { customerLabel, itemSummary, money, paymentLabels, serviceLabels, transactionWhen } from './lib/format'
 import type { PaymentStatus, Product, SalesReport, ServiceStatus, ShopSettings, Topping, Transaction } from './lib/models'
@@ -30,11 +31,11 @@ function StaffLogin({ onSignedIn }: { onSignedIn: () => void }) {
       const response = await fetch('/api/staff/login', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) })
       if (response.status === 401) throw new Error('Those credentials did not work.')
       if (response.status === 429) throw new Error('Too many attempts. Try again in a minute.')
-      if (!response.ok) throw new Error('Staff login is unavailable. Restart pnpm dev and try again.')
+      if (!response.ok) throw new Error('Staff login is unavailable. Try again in a moment.')
       onSignedIn()
     } catch (loginError) {
       const message = loginError instanceof Error ? loginError.message : 'Unable to sign in.'
-      setError(message === 'Failed to fetch' ? 'Staff login is unavailable. Restart pnpm dev and try again.' : message)
+      setError(message === 'Failed to fetch' ? 'Staff login is unavailable. Try again in a moment.' : message)
     } finally {
       setIsSubmitting(false)
     }
@@ -43,7 +44,7 @@ function StaffLogin({ onSignedIn }: { onSignedIn: () => void }) {
     <div className="auth-shell">
       <div className="auth-card">
         <RouteLink to="/" className="auth-back">← Homepage</RouteLink>
-        <div className="auth-logo"><span className="logo-mark"><IceCreamBowl size={24} /></span></div>
+        <div className="auth-logo"><img className="brand-logo" src={logo} alt="Scoops & Smiles" /></div>
         <h1>Welcome back.</h1>
         <p className="auth-copy">Sign in to see today's sales, record a transaction, and keep the case current.</p>
         <form onSubmit={submit}>
@@ -64,7 +65,7 @@ function AdminShell({ onSignOut }: { onSignOut: () => void }) {
   useEffect(() => { reload() }, [path])
   const page = path.startsWith('/admin/transactions') ? <TransactionsPage onChange={reload} />
     : path.startsWith('/admin/catalog') ? <CatalogPage />
-    : path.startsWith('/admin/ingredients') ? <IngredientsAdminPage />
+    : path.startsWith('/admin/toppings') ? <ToppingsAdminPage />
     : path.startsWith('/admin/settings') ? <SettingsPage />
     : path.startsWith('/admin/help') ? <HelpPage />
     : <OverviewPage report={report} />
@@ -73,12 +74,12 @@ function AdminShell({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="admin-shell">
       <aside className="admin-sidebar">
-        <RouteLink to="/" className="admin-brand"><span className="logo-mark"><IceCreamBowl size={20} /></span><span>Scoops <i>&</i> Smiles</span><small>back office</small></RouteLink>
+        <RouteLink to="/" className="admin-brand"><img className="brand-logo" src={logo} alt="Scoops & Smiles" /><small>back office</small></RouteLink>
         <div className="admin-nav-label">Workspace</div>
         <RouteLink to="/admin" className={`admin-link${path === '/admin' ? ' active' : ''}`}><LayoutDashboard size={17} /> Overview</RouteLink>
         <RouteLink to="/admin/transactions" className={`admin-link${path.startsWith('/admin/transactions') ? ' active' : ''}`}><ClipboardList size={17} /> Transactions {report && <b className="nav-count">{report.transactionCount}</b>}</RouteLink>
         <RouteLink to="/admin/catalog" className={`admin-link${path.startsWith('/admin/catalog') ? ' active' : ''}`}><Package size={17} /> Catalog</RouteLink>
-        <RouteLink to="/admin/ingredients" className={`admin-link${path.startsWith('/admin/ingredients') ? ' active' : ''}`}><Coffee size={17} /> Ingredients</RouteLink>
+        <RouteLink to="/admin/toppings" className={`admin-link${path.startsWith('/admin/toppings') ? ' active' : ''}`}><Coffee size={17} /> Toppings</RouteLink>
         <div className="admin-nav-label settings-label">Manage</div>
         <RouteLink to="/admin/settings" className={`admin-link${path.startsWith('/admin/settings') ? ' active' : ''}`}><Settings2 size={17} /> Store settings</RouteLink>
         <RouteLink to="/admin/help" className={`admin-link${path.startsWith('/admin/help') ? ' active' : ''}`}><CircleHelp size={17} /> Help center</RouteLink>
@@ -106,7 +107,7 @@ function OverviewPage({ report }: { report: SalesReport | null }) {
   const stats = report ?? { todayTotal: 0, transactionCount: 0, averageTicket: 0, changePercent: 0, week: [], recent: [], topFlavors: [] }
   return (
     <>
-      <div className="admin-page-intro"><div><h2>Today at a glance</h2><p>Totals come from recorded transactions.</p></div><RouteLink to="/admin/transactions" className="button button-dark"><Plus size={17} /> New transaction</RouteLink></div>
+      <div className="admin-page-intro"><div><h2>Today at a glance</h2></div><RouteLink to="/admin/transactions" className="button button-dark"><Plus size={17} /> New transaction</RouteLink></div>
       <section className="metrics-grid">
         <MetricCard label="Today’s sales" value={money.format(stats.todayTotal)} change={`${stats.changePercent > 0 ? '+' : ''}${stats.changePercent}%`} note="vs. this weekday last week" />
         <MetricCard label="Transactions today" value={String(stats.transactionCount)} change={money.format(report?.weekTotal ?? 0)} note="across the last 7 days" />
@@ -114,11 +115,11 @@ function OverviewPage({ report }: { report: SalesReport | null }) {
       </section>
       <div className="admin-grid">
         <section className="panel sales-panel">
-          <div className="panel-heading"><div><h3>Sales overview</h3><p>Each point is that day’s transaction total.</p></div><span className="period-select">Last 7 days</span></div>
+          <div className="panel-heading"><div><h3>Sales overview</h3></div><span className="period-select">Last 7 days</span></div>
           <SalesChart days={stats.week} />
         </section>
         <section className="panel orders-panel">
-          <div className="panel-heading"><div><h3>Latest transactions</h3><p>Newest tickets from the database.</p></div><RouteLink to="/admin/transactions" className="underlined-link">View all <ArrowUpRight size={14} /></RouteLink></div>
+          <div className="panel-heading"><div><h3>Latest transactions</h3></div><RouteLink to="/admin/transactions" className="underlined-link">View all <ArrowUpRight size={14} /></RouteLink></div>
           <div className="order-list">{stats.recent.map((transaction) => <TransactionRow key={transaction.id} transaction={transaction} />)}</div>
           {report && <FlavorBars flavors={report.topFlavors} />}
         </section>
@@ -187,7 +188,7 @@ function TransactionsPage({ onChange }: { onChange: () => void }) {
   }
   return (
     <>
-      <div className="admin-page-intro"><div><h2>Transactions</h2><p>Names are a first initial and a last name. A ticket can hold one flavor, several of one flavor, or a mix.</p></div></div>
+      <div className="admin-page-intro"><div><h2>Transactions</h2></div></div>
       {error && <p className="auth-error">{error}</p>}
       <TransactionForm products={products} onCreated={async () => { await load(); onChange() }} />
       <div className="table-wrap">
@@ -261,7 +262,7 @@ function CatalogPage() {
   useEffect(() => { load().catch(() => setProducts([])) }, [])
   return (
     <>
-      <div className="admin-page-intro"><div><h2>Catalog</h2><p>Flavor of the week is the label on the homepage hero. Choosing a new one replaces the current pick.</p></div></div>
+      <div className="admin-page-intro"><div><h2>Catalog</h2><p>What’s in the case, and the flavor featured this week.</p></div></div>
       <div className="table-wrap">
         <table className="data-table">
           <thead><tr><th>Item</th><th>Size</th><th>Price</th><th>Case</th><th></th></tr></thead>
@@ -282,13 +283,13 @@ function CatalogPage() {
   )
 }
 
-function IngredientsAdminPage() {
+function ToppingsAdminPage() {
   const [toppings, setToppings] = useState<Topping[]>([])
   useEffect(() => { fetchToppings().then((result) => setToppings(result.toppings)).catch(() => setToppings([])) }, [])
   return (
     <>
-      <div className="admin-page-intro"><div><h2>Ingredients</h2><p>Finishes currently offered beside the scoops.</p></div></div>
-      <ul className="ingredient-list">{toppings.map((topping) => <li key={topping.id}><strong>{topping.name}</strong><span>{topping.category}</span><b>{money.format(topping.price)}</b></li>)}</ul>
+      <div className="admin-page-intro"><div><h2>Additional toppings</h2><p>Optional finishes offered beside the scoops.</p></div></div>
+      <ul className="topping-list">{toppings.map((topping) => <li key={topping.id}><strong>{topping.name}</strong><span>{topping.category}</span><b>{money.format(topping.price)}</b></li>)}</ul>
     </>
   )
 }
@@ -301,11 +302,11 @@ function SettingsPage() {
     event.preventDefault()
     const result = await updateSettings(settings)
     setSettings(result.settings)
-    setSaved('Saved for the visit page.')
+    setSaved('Saved.')
   }
   return (
     <>
-      <div className="admin-page-intro"><div><h2>Store settings</h2><p>Hours and the address shown on the visit page.</p></div></div>
+      <div className="admin-page-intro"><div><h2>Store settings</h2><p>Hours and address.</p></div></div>
       <form className="settings-form" onSubmit={submit}>
         <label>Hours<textarea value={settings.hours} onChange={(event) => setSettings({ ...settings, hours: event.target.value })} /></label>
         <label>Street<input value={settings.address_line} onChange={(event) => setSettings({ ...settings, address_line: event.target.value })} /></label>
@@ -321,9 +322,8 @@ function HelpPage() {
   return (
     <section className="interior-copy">
       <h2>Help center</h2>
-      <p>Transactions are counter tickets, recorded after someone is at the shop. Use a first initial and last name, then add one or more flavors. Quantity covers “two of the same,” and extra rows cover a mix.</p>
-      <p>Payment can be paid online, in person, or not paid yet. The counter status tracks whether the scoop is new, being made, ready, or completed.</p>
-      <p>The homepage flavor label reads whichever catalog item is marked flavor of the week.</p>
+      <p>Ring up whoever is at the counter: what they ordered, how they paid, and when it’s ready.</p>
+      <p>Update hours and the address when they change. Pick a new flavor of the week when you want a different one out front.</p>
     </section>
   )
 }
