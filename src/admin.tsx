@@ -3,6 +3,7 @@ import { ArrowUpRight, Bell, ChevronRight, CircleHelp, ClipboardList, Coffee, Ic
 import logo from '../assets/sns_logo.png'
 import { createTransaction, fetchCatalog, fetchReport, fetchSettings, fetchToppings, fetchTransactions, updateProduct, updateSettings, updateTransaction } from './lib/api'
 import { customerLabel, itemSummary, money, paymentLabels, serviceLabels, transactionWhen } from './lib/format'
+import { categoryLabels, recipeMarks } from './lib/diet'
 import type { PaymentStatus, Product, SalesReport, ServiceStatus, ShopSettings, Topping, Transaction } from './lib/models'
 import { RouteLink, useRoute } from './router'
 
@@ -242,8 +243,8 @@ function TransactionForm({ products, onCreated }: { products: Product[]; onCreat
         {lines.map((line, index) => (
           <div key={index}>
             <select value={line.productId} onChange={(event) => setLines(lines.map((item, itemIndex) => itemIndex === index ? { ...item, productId: event.target.value } : item))} required>
-              <option value="">Flavor and size</option>
-              {products.map((product) => <option key={product.id} value={product.id}>{product.name} · {product.size} · {money.format(product.price)}</option>)}
+              <option value="">Flavor</option>
+              {products.map((product) => <option key={product.id} value={product.id}>{product.name} · {categoryLabels[product.category]} · {money.format(product.price)}</option>)}
             </select>
             <input type="number" min={1} max={12} value={line.quantity} onChange={(event) => setLines(lines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item))} />
           </div>
@@ -265,12 +266,12 @@ function CatalogPage() {
       <div className="admin-page-intro"><div><h2>Catalog</h2><p>What’s in the case, and the flavor featured this week.</p></div></div>
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>Item</th><th>Size</th><th>Price</th><th>Case</th><th></th></tr></thead>
+          <thead><tr><th>Item</th><th>Recipe</th><th>Price</th><th>Case</th><th></th></tr></thead>
           <tbody>
             {products.map((product) => (
               <tr key={product.id}>
-                <td>{product.name}{product.isFlavorOfWeek && <small>flavor of the week</small>}</td>
-                <td>{product.size}</td>
+                <td>{product.name}{product.isFlavorOfWeek && <small>flavor of the week</small>}<small>{categoryLabels[product.category]}</small></td>
+                <td>{recipeMarks(product).join(' · ')}</td>
                 <td>{money.format(product.price)}</td>
                 <td><button className="underlined-link" onClick={() => updateProduct(product.id, { isAvailable: !product.isAvailable }).then(load)}>{product.isAvailable ? 'Available' : 'Sold out'}</button></td>
                 <td>{!product.isFlavorOfWeek && <button className="underlined-link" onClick={() => updateProduct(product.id, { isFlavorOfWeek: true }).then(load)}>Set flavor of the week</button>}</td>

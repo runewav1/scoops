@@ -10,11 +10,13 @@ pnpm dev
 ```
 
 - Homepage: `/`
-- Menu: `/menu`, with category paths such as `/menu/scoops`
+- Menu: `/menu`, with base paths such as `/menu/dairy`, `/menu/plant-based`, and `/menu/sorbet`
 - Flavor detail: `/flavors/:id`
+- Photo credits: `/credits`
 - Story: `/story`
 - Visit: `/visit`
 - Additional toppings: `/toppings`
+- FAQ: `/faq`
 - Staff login and overview: `/admin`
 - Transactions, catalog, toppings, settings, and help: `/admin/transactions`, `/admin/catalog`, `/admin/toppings`, `/admin/settings`, `/admin/help`
 
@@ -32,7 +34,7 @@ The browser never receives the password or its hash. `pnpm dev:server` still sta
 
 The shop data lives in a local SQLite file at `data/scoops.sqlite`, created with Node’s built-in `node:sqlite`. Tables and the catalog are created on the first catalog or settings query. Ghost transactions are inserted only when a transaction or reporting query finds an empty transaction table.
 
-Core domain types live in `src/lib/models.ts`. A transaction stores a first initial, a last name, a payment status (`paid online`, `in person`, or `not paid yet`), a counter status, a timestamp, and one or more line items. A line can repeat a flavor, and a ticket can mix several flavors and sizes.
+Core domain types live in `src/lib/models.ts`. Each flavor keeps dietary notes for the menu filters: dairy-free, lactose-free, vegan, gluten-free, a coconut base, and declared ingredients. A transaction stores a first initial, a last name, a payment status (`paid online`, `in person`, or `not paid yet`), a counter status, a timestamp, and one or more line items. A line can repeat a flavor, and a ticket can mix several flavors.
 
 The same query functions can later point at a hosted SQL database. Keep authentication and database credentials on the server.
 

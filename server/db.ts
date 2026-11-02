@@ -46,8 +46,7 @@ function seedGhostTransactions(db: DatabaseSync) {
     ['B', 'Cho'], ['G', 'Haddad'], ['V', 'Novak'], ['Y', 'Bennett'], ['O', 'Silva'],
   ]
   const payments: PaymentStatus[] = ['paid_online', 'in_person', 'in_person', 'unpaid']
-  const popular = catalogSeed.filter((product) => ['scoops', 'pints', 'sundaes', 'drinks'].includes(product.category))
-  const weighted = popular.flatMap((product) => product.price < 6 ? [product, product, product] : [product])
+  const weighted = catalogSeed.flatMap((product) => product.price < 6 ? [product, product, product] : [product])
   const random = mulberry32(20261005)
   const pick = () => weighted[Math.floor(random() * weighted.length)]
   const insertTransaction = db.prepare(`INSERT INTO transactions (first_initial, last_name, payment_status, service_status, created_at) VALUES (?, ?, ?, ?, ?)`)
@@ -96,21 +95,81 @@ function seedGhostTransactions(db: DatabaseSync) {
   }
 }
 
-function seedIfEmpty(db: DatabaseSync) {
-  const productCount = db.prepare('SELECT COUNT(*) AS count FROM products').get() as { count: number }
-  if (productCount.count > 0) return
-  const insertProduct = db.prepare(`INSERT INTO products (id, name, description, price, category, size, flavor_note, accent, is_featured, is_flavor_of_week, is_available) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`)
-  const insertTopping = db.prepare('INSERT INTO toppings (id, name, price, category) VALUES (?, ?, ?, ?)')
-  const insertSetting = db.prepare('INSERT INTO shop_settings (key, value) VALUES (?, ?)')
+const CATALOG_VERSION = 'lineup-20-menu'
+
+function ensureProductColumns(db: DatabaseSync) {
+  const names = new Set((db.prepare('PRAGMA table_info(products)').all() as Array<{ name: string }>).map((column) => column.name))
+  const columns: Array<[string, string]> = [
+    ['image_path', "TEXT NOT NULL DEFAULT ''"],
+    ['dairy_free', 'INTEGER NOT NULL DEFAULT 0'],
+    ['lactose_free', 'INTEGER NOT NULL DEFAULT 0'],
+    ['vegan', 'INTEGER NOT NULL DEFAULT 0'],
+    ['gluten_free', 'INTEGER NOT NULL DEFAULT 0'],
+    ['contains_coconut', 'INTEGER NOT NULL DEFAULT 0'],
+    ['allergens', "TEXT NOT NULL DEFAULT '[]'"],
+    ['credit_artist', "TEXT NOT NULL DEFAULT ''"],
+    ['credit_license', "TEXT NOT NULL DEFAULT ''"],
+    ['credit_license_url', "TEXT NOT NULL DEFAULT ''"],
+    ['credit_source', "TEXT NOT NULL DEFAULT ''"],
+  ]
+  for (const [name, definition] of columns) {
+    if (!names.has(name)) db.exec(`ALTER TABLE products ADD COLUMN ${name} ${definition}`)
+  }
+}
+
+function seedShopDefaults(db: DatabaseSync) {
+  const toppingCount = db.prepare('SELECT COUNT(*) AS count FROM toppings').get() as { count: number }
+  if (toppingCount.count === 0) {
+    const insertTopping = db.prepare('INSERT INTO toppings (id, name, price, category) VALUES (?, ?, ?, ?)')
+    for (const topping of toppingSeed) insertTopping.run(topping.id, topping.name, topping.price, topping.category)
+  }
+  const insertSetting = db.prepare('INSERT INTO shop_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING')
+  insertSetting.run('hours', 'Open every day, 12–9pm. Scoops until sold out.')
+  insertSetting.run('address_line', '18 Honeycomb Lane')
+  insertSetting.run('address_city', 'Maplewood, GA 30309')
+}
+
+function writeCatalogVersion(db: DatabaseSync) {
+  db.prepare(`INSERT INTO shop_settings (key, value) VALUES ('catalog_version', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value`).run(CATALOG_VERSION)
+}
+
+function syncCatalog(db: DatabaseSync) {
+  const current = db.prepare(`SELECT value FROM shop_settings WHERE key = 'catalog_version'`).get() as { value: string } | undefined
+  if (current?.value === CATALOG_VERSION) return
+  const existingIds = new Set((db.prepare('SELECT id FROM products').all() as Array<{ id: string }>).map((row) => row.id))
+  const sameMenu = existingIds.size === catalogSeed.length && catalogSeed.every((product) => existingIds.has(product.id))
+  if (sameMenu) {
+    const updatePhoto = db.prepare('UPDATE products SET description = ?, image_path = ?, credit_artist = ?, credit_license = ?, credit_license_url = ?, credit_source = ? WHERE id = ?')
+    db.exec('BEGIN')
+    try {
+      for (const product of catalogSeed) updatePhoto.run(product.description, product.imagePath, product.credit.artist, product.credit.license, product.credit.licenseUrl, product.credit.source, product.id)
+      writeCatalogVersion(db)
+      db.exec('COMMIT')
+    } catch (error) {
+      db.exec('ROLLBACK')
+      throw error
+    }
+    return
+  }
+  const insertProduct = db.prepare(`INSERT INTO products (
+    id, name, description, price, category, size, flavor_note, accent, is_featured, is_flavor_of_week, is_available,
+    image_path, dairy_free, lactose_free, vegan, gluten_free, contains_coconut, allergens,
+    credit_artist, credit_license, credit_license_url, credit_source
+  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
   db.exec('BEGIN')
   try {
+    db.exec('DELETE FROM transaction_items')
+    db.exec('DELETE FROM transactions')
+    db.exec('DELETE FROM products')
     for (const product of catalogSeed) {
-      insertProduct.run(product.id, product.name, product.description, product.price, product.category, product.size, product.flavorNote, product.accent, product.isFeatured ? 1 : 0, product.isFlavorOfWeek ? 1 : 0)
+      insertProduct.run(
+        product.id, product.name, product.description, product.price, product.category, product.size, product.flavorNote, product.accent,
+        product.isFeatured ? 1 : 0, product.isFlavorOfWeek ? 1 : 0, product.imagePath,
+        product.dairyFree ? 1 : 0, product.lactoseFree ? 1 : 0, product.vegan ? 1 : 0, product.glutenFree ? 1 : 0, product.containsCoconut ? 1 : 0,
+        JSON.stringify(product.allergens), product.credit.artist, product.credit.license, product.credit.licenseUrl, product.credit.source,
+      )
     }
-    for (const topping of toppingSeed) insertTopping.run(topping.id, topping.name, topping.price, topping.category)
-    insertSetting.run('hours', 'Open every day, 12–9pm. Scoops until sold out.')
-    insertSetting.run('address_line', '18 Honeycomb Lane')
-    insertSetting.run('address_city', 'Maplewood, GA 30309')
+    writeCatalogVersion(db)
     db.exec('COMMIT')
   } catch (error) {
     db.exec('ROLLBACK')
@@ -134,7 +193,18 @@ export function getDb() {
       accent TEXT NOT NULL,
       is_featured INTEGER NOT NULL DEFAULT 0,
       is_flavor_of_week INTEGER NOT NULL DEFAULT 0,
-      is_available INTEGER NOT NULL DEFAULT 1
+      is_available INTEGER NOT NULL DEFAULT 1,
+      image_path TEXT NOT NULL DEFAULT '',
+      dairy_free INTEGER NOT NULL DEFAULT 0,
+      lactose_free INTEGER NOT NULL DEFAULT 0,
+      vegan INTEGER NOT NULL DEFAULT 0,
+      gluten_free INTEGER NOT NULL DEFAULT 0,
+      contains_coconut INTEGER NOT NULL DEFAULT 0,
+      allergens TEXT NOT NULL DEFAULT '[]',
+      credit_artist TEXT NOT NULL DEFAULT '',
+      credit_license TEXT NOT NULL DEFAULT '',
+      credit_license_url TEXT NOT NULL DEFAULT '',
+      credit_source TEXT NOT NULL DEFAULT ''
     );
     CREATE TABLE IF NOT EXISTS toppings (
       id TEXT PRIMARY KEY,
@@ -163,7 +233,9 @@ export function getDb() {
       value TEXT NOT NULL
     );
   `)
-  seedIfEmpty(db)
+  ensureProductColumns(db)
+  seedShopDefaults(db)
+  syncCatalog(db)
   database = db
   return db
 }
@@ -220,7 +292,9 @@ export function listToppings() {
 }
 
 export function listSettings() {
-  return Object.fromEntries((getDb().prepare('SELECT key, value FROM shop_settings').all() as Array<{ key: string; value: string }>).map((row) => [row.key, row.value]))
+  const settings = Object.fromEntries((getDb().prepare('SELECT key, value FROM shop_settings').all() as Array<{ key: string; value: string }>).map((row) => [row.key, row.value]))
+  delete settings.catalog_version
+  return settings
 }
 
 export function listTransactions() {

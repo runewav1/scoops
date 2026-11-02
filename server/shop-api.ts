@@ -38,9 +38,31 @@ function mapProduct(row: Record<string, unknown>) {
     size: row.size,
     flavorNote: row.flavor_note,
     accent: row.accent,
+    imagePath: row.image_path,
+    dairyFree: Boolean(row.dairy_free),
+    lactoseFree: Boolean(row.lactose_free),
+    vegan: Boolean(row.vegan),
+    glutenFree: Boolean(row.gluten_free),
+    containsCoconut: Boolean(row.contains_coconut),
+    allergens: parseAllergens(row.allergens),
+    credit: {
+      artist: row.credit_artist,
+      license: row.credit_license,
+      licenseUrl: row.credit_license_url,
+      source: row.credit_source,
+    },
     isFeatured: Boolean(row.is_featured),
     isFlavorOfWeek: Boolean(row.is_flavor_of_week),
     isAvailable: Boolean(row.is_available),
+  }
+}
+
+function parseAllergens(value: unknown) {
+  try {
+    const parsed = JSON.parse(String(value ?? '[]'))
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : []
+  } catch {
+    return []
   }
 }
 

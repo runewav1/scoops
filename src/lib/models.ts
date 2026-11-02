@@ -1,4 +1,4 @@
-export type ProductCategory = 'scoops' | 'pints' | 'quarts' | 'sundaes' | 'drinks'
+export type ProductCategory = 'dairy' | 'plant-based' | 'sorbet'
 export type PaymentStatus = 'paid_online' | 'in_person' | 'unpaid'
 export type ServiceStatus = 'new' | 'preparing' | 'ready' | 'completed'
 
@@ -11,6 +11,14 @@ export interface Product {
   size: string
   flavorNote: string
   accent: 'coral' | 'pistachio' | 'chocolate' | 'lemon'
+  imagePath: string
+  dairyFree: boolean
+  lactoseFree: boolean
+  vegan: boolean
+  glutenFree: boolean
+  containsCoconut: boolean
+  allergens: string[]
+  credit: { artist: string; license: string; licenseUrl: string; source: string }
   isFeatured?: boolean
   isFlavorOfWeek?: boolean
   isAvailable?: boolean
