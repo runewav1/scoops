@@ -2,8 +2,12 @@ import type { Transaction, TransactionItem } from './models'
 
 export const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 
-export function customerLabel(transaction: Pick<Transaction, 'firstInitial' | 'lastName'>) {
-  return `${transaction.firstInitial.toUpperCase()}. ${transaction.lastName}`
+export function customerLabel(transaction: Pick<Transaction, 'firstName' | 'lastName'>) {
+  return `${transaction.firstName} ${transaction.lastName}`
+}
+
+export function productCode(productNumber: number) {
+  return String(productNumber).padStart(3, '0')
 }
 
 export function itemSummary(items: TransactionItem[]) {

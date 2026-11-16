@@ -30,7 +30,8 @@ function stamp(date: Date) {
 
 function mapProduct(row: Record<string, unknown>) {
   return {
-    id: row.id,
+    id: row.slug,
+    productNumber: row.product_id,
     name: row.name,
     description: row.description,
     price: row.price,
@@ -53,7 +54,7 @@ function mapProduct(row: Record<string, unknown>) {
     },
     isFeatured: Boolean(row.is_featured),
     isFlavorOfWeek: Boolean(row.is_flavor_of_week),
-    isAvailable: Boolean(row.is_available),
+    isAvailable: Boolean(row.in_stock),
   }
 }
 
@@ -135,8 +136,10 @@ export async function handleShopApi(request: IncomingMessage, response: ServerRe
   }
   if (request.method === 'POST' && pathname === '/api/transactions') {
     const body = await readJson(request)
-    const firstInitial = typeof body.firstInitial === 'string' ? body.firstInitial.trim() : ''
+    const firstName = typeof body.firstName === 'string' ? body.firstName.trim() : ''
     const lastName = typeof body.lastName === 'string' ? body.lastName.trim() : ''
+    const phoneNumber = typeof body.phoneNumber === 'string' ? body.phoneNumber.trim() : ''
+    const allergies = typeof body.allergies === 'string' ? body.allergies.trim() : ''
     const paymentStatus = body.paymentStatus as PaymentStatus
     const serviceStatus = body.serviceStatus as ServiceStatus
     const items = Array.isArray(body.items) ? body.items.flatMap((item) => {
@@ -144,8 +147,8 @@ export async function handleShopApi(request: IncomingMessage, response: ServerRe
       const record = item as { productId?: unknown; quantity?: unknown }
       return typeof record.productId === 'string' ? [{ productId: record.productId, quantity: Number(record.quantity) }] : []
     }) : []
-    if (!/^[A-Za-z]$/.test(firstInitial) || lastName.length < 2) {
-      sendJson(response, 400, { error: 'Use a first initial and a last name' })
+    if (!firstName || !lastName || !phoneNumber) {
+      sendJson(response, 400, { error: 'Add a name and a phone number' })
       return true
     }
     if (!payments.has(paymentStatus) || !services.has(serviceStatus)) {
@@ -153,7 +156,7 @@ export async function handleShopApi(request: IncomingMessage, response: ServerRe
       return true
     }
     try {
-      sendJson(response, 201, { transaction: createTransaction({ firstInitial, lastName, paymentStatus, serviceStatus, items }) })
+      sendJson(response, 201, { transaction: createTransaction({ firstName, lastName, phoneNumber, allergies, paymentStatus, serviceStatus, items }) })
     } catch (error) {
       sendJson(response, 400, { error: error instanceof Error ? error.message : 'Could not save the transaction' })
     }

@@ -1,4 +1,4 @@
-import type { Product, SalesReport, ShopSettings, Topping, Transaction } from './models'
+import type { PaymentStatus, Product, SalesReport, ServiceStatus, ShopSettings, Topping, Transaction } from './models'
 
 export interface CatalogRepository {
   listProducts(): Promise<Product[]>
@@ -7,7 +7,7 @@ export interface CatalogRepository {
 
 export interface TransactionRepository {
   listTransactions(): Promise<Transaction[]>
-  createTransaction(input: Omit<Transaction, 'id' | 'code' | 'total' | 'createdAt' | 'items'> & { items: Array<{ productId: string; quantity: number }> }): Promise<Transaction>
+  createTransaction(input: { firstName: string; lastName: string; phoneNumber: string; allergies: string; paymentStatus: PaymentStatus; serviceStatus: ServiceStatus; items: Array<{ productId: string; quantity: number }> }): Promise<Transaction>
   updateTransaction(id: number, changes: Partial<Pick<Transaction, 'paymentStatus' | 'serviceStatus'>>): Promise<Transaction>
 }
 

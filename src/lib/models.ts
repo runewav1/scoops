@@ -4,6 +4,7 @@ export type ServiceStatus = 'new' | 'preparing' | 'ready' | 'completed'
 
 export interface Product {
   id: string
+  productNumber: number
   name: string
   description: string
   price: number
@@ -32,7 +33,9 @@ export interface Topping {
 }
 
 export interface TransactionItem {
+  detailId: number
   productId: string
+  productNumber: number
   productName: string
   quantity: number
   unitPrice: number
@@ -42,13 +45,45 @@ export interface TransactionItem {
 export interface Transaction {
   id: number
   code: string
-  firstInitial: string
+  customerId: number
+  firstName: string
   lastName: string
+  allergies: string
+  phoneNumber: string
+  customerPoints: number
   paymentStatus: PaymentStatus
   serviceStatus: ServiceStatus
+  orderDate: string
+  orderTime: string
   createdAt: string
+  pointsAwarded: number
+  pointsRedeemed: number
+  discount: number
   total: number
   items: TransactionItem[]
+}
+
+export interface Customer {
+  id: number
+  firstName: string
+  lastName: string
+  allergies: string
+  phoneNumber: string
+  points: number
+  orderCount: number
+  canSignIn: boolean
+}
+
+export interface LoyaltyRules {
+  pointsPerDollar: number
+  rewardPoints: number
+  rewardValue: number
+}
+
+export interface AccountSnapshot {
+  customer: Customer
+  orders: Transaction[]
+  rules: LoyaltyRules
 }
 
 export interface DayTotal {

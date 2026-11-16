@@ -1,9 +1,10 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { ArrowUpRight, ChevronRight, Clock3, Cookie, Sparkles, Star, Store } from 'lucide-react'
 import logo from '../assets/sns_logo.png'
+import { AccountPage } from './account'
 import { fetchCatalog, fetchSettings, fetchToppings } from './lib/api'
 import { cardMarks, categoryLabels, dietFilters, matchesDiet, recipeMarks, type DietFilterId } from './lib/diet'
-import { money } from './lib/format'
+import { money, productCode } from './lib/format'
 import type { Product, ProductCategory, ShopSettings, Topping } from './lib/models'
 import { RouteLink, useRoute } from './router'
 const shopEmail = 'hello@scoopsandsmiles.example'
@@ -32,6 +33,7 @@ export function Storefront() {
   else if (path === '/toppings') page = <ToppingsPage />
   else if (path === '/faq') page = <FaqPage />
   else if (path === '/credits') page = <CreditsPage products={catalog.products} />
+  else if (path === '/account' || path.startsWith('/account/')) page = <AccountPage />
   else if (path !== '/') page = <MissingPage />
 
   return (
@@ -45,6 +47,7 @@ export function Storefront() {
           <RouteLink to="/visit">Come say hi</RouteLink>
           <RouteLink to="/toppings">Toppings</RouteLink>
           <RouteLink to="/faq">FAQ</RouteLink>
+          <RouteLink to="/account">Account</RouteLink>
         </nav>
       </header>
       <main>{page}</main>
@@ -91,7 +94,7 @@ function SiteFooter() {
             <button className="button button-dark" type="submit">Compose email</button>
           </form>
         </div>
-        <div className="footer-end"><span>© 2026 Scoops & Smiles</span><nav className="footer-links" aria-label="Shop"><RouteLink to="/faq" className="credits-link">FAQ</RouteLink><RouteLink to="/credits" className="credits-link">Photo credits</RouteLink><RouteLink to="/admin" className="staff-login">Staff login</RouteLink></nav></div>
+        <div className="footer-end"><span>© 2026 Scoops & Smiles</span><nav className="footer-links" aria-label="Shop"><RouteLink to="/account" className="credits-link">Account</RouteLink><RouteLink to="/faq" className="credits-link">FAQ</RouteLink><RouteLink to="/credits" className="credits-link">Photo credits</RouteLink><RouteLink to="/admin" className="staff-login">Staff login</RouteLink></nav></div>
       </div>
     </footer>
   )
@@ -172,12 +175,12 @@ function FlavorPage({ products, error, flavorId }: { products: Product[]; flavor
   return (
     <section className="section-pad interior-copy flavor-page">
       <img className="flavor-photo" src={product.imagePath} alt="" />
-      <p className="eyebrow">{categoryLabels[product.category]} · {product.size}</p>
+      <p className="eyebrow">{categoryLabels[product.category]} · Product {productCode(product.productNumber)}</p>
       <h2>{product.name}</h2>
       <p>{product.description}</p>
       <ul className="diet-chips">{recipeMarks(product).map((mark) => <li key={mark}>{mark}</li>)}</ul>
       <p className="photo-credit">Photo by {product.credit.artist}. <a href={product.credit.licenseUrl}>{product.credit.license}</a>. <a href={product.credit.source}>Source</a>.</p>
-      <p className="price-line">{money.format(product.price)} <span>{product.flavorNote}</span></p>
+      <p className="price-line">{money.format(product.price)} <span>{product.isAvailable ? product.flavorNote : 'Sold out'}</span></p>
       {product.isFlavorOfWeek && <p className="featured inline-featured"><Sparkles size={12} /> flavor of the week</p>}
       <RouteLink to={`/menu/${product.category}`} className="button button-dark">More {categoryLabels[product.category].toLowerCase()}</RouteLink>
     </section>
@@ -243,7 +246,8 @@ function FaqPage() {
   const items: { question: string; answer: ReactNode }[] = [
     { question: 'When are you open?', answer: hours },
     { question: 'Where is the shop?', answer: <>{street}, {city}. Scoops are served at the counter. <RouteLink to="/visit">Hours and directions</RouteLink> are on the visit page.</> },
-    { question: 'Can I order ahead?', answer: 'The menu is for looking before you come in. We scoop what is in the case when you reach the counter.' },
+    { question: 'Can I order ahead?', answer: <>Yes. <RouteLink to="/account">Sign in</RouteLink> and place a pickup order from your account. The counter still scoops what is in the case.</> },
+    { question: 'How do Scoops & Smiles Points work?', answer: 'A paid order earns 10 points for each dollar. 100 points takes $5 off a pickup order you place while signed in. Your balance, allergies, and past orders live on your account.' },
     { question: 'What kinds of scoops do you make?', answer: <>Dairy custards, coconut-based scoops, and fruit sorbets. The <RouteLink to="/menu">menu</RouteLink> is split that way.</> },
     { question: 'How do I find a flavor I can eat?', answer: 'The menu has filters for dairy-free, lactose-free, vegan, gluten-free, and a few ingredients you may want to skip. Turn on the ones that fit, and the case narrows to those scoops.' },
     { question: 'What is a coconut scoop?', answer: 'The plant-based scoops use a coconut base. Some of them also include wheat or hazelnut, and the flavor says so.' },

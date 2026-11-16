@@ -1,9 +1,7 @@
 import 'dotenv/config'
 import type { IncomingMessage, ServerResponse } from 'node:http'
-import { randomBytes, scrypt as scryptCallback, timingSafeEqual } from 'node:crypto'
-import { promisify } from 'node:util'
-
-const scrypt = promisify(scryptCallback)
+import { randomBytes, timingSafeEqual } from 'node:crypto'
+import { verifyPassword } from './passwords.js'
 const sessionTtlMs = 8 * 60 * 60 * 1000
 const sessions = new Map<string, number>()
 const attempts = new Map<string, { count: number; resetAt: number }>()
@@ -35,15 +33,6 @@ async function readJson(request: IncomingMessage) {
     if (body.length > 10_000) throw new Error('Request too large')
   }
   return body ? JSON.parse(body) as { username?: string; password?: string } : {}
-}
-
-async function verifyPassword(password: string, encodedHash: string) {
-  const [salt, hash] = encodedHash.split(':')
-  if (!salt || !hash) return false
-  const expected = Buffer.from(hash, 'hex')
-  if (!expected.length || expected.length * 2 !== hash.length) return false
-  const actual = Buffer.from(await scrypt(password, salt, expected.length) as Buffer)
-  return expected.length === actual.length && timingSafeEqual(expected, actual)
 }
 
 function sameSecret(submitted: string, expected: string) {

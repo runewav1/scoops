@@ -38,7 +38,7 @@ a { color: inherit; text-decoration: none; }
 .topbar { align-items: center; display: flex; justify-content: flex-start; max-width: var(--page); margin: auto; padding: 22px var(--gutter); }
 .wordmark { align-items: center; display: flex; white-space: nowrap; }
 .brand-logo { display: block; height: 76px; mix-blend-mode: multiply; width: auto; }
-.main-nav { display: flex; font-size: 14px; gap: 32px; margin-left: 80px; }
+.main-nav { display: flex; flex-wrap: wrap; font-size: 14px; gap: 22px; margin-left: 48px; }
 .main-nav a, .text-button { color: var(--muted); transition: color .2s; }
 .main-nav a { white-space: nowrap; }
 .main-nav a:hover, .text-button:hover { color: var(--coral); }
@@ -136,12 +136,42 @@ h1 em, h2 em { color: var(--coral); font-style: normal; }
 .data-table th { color: #8a8178; font-size: 11px; font-weight: 600; text-transform: uppercase; }
 .data-table small { color: #978f86; display: block; margin-top: 4px; }
 .data-table select, .transaction-form input, .transaction-form select, .settings-form input, .settings-form textarea { background: #fff; border: 1px solid #ddd4c8; border-radius: 4px; color: var(--ink); font: 14px 'DM Sans'; padding: 8px; width: 100%; }
-.transaction-form, .settings-form { display: grid; gap: 12px; grid-template-columns: repeat(4, 1fr); margin-bottom: 22px; }
+.transaction-form, .settings-form { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 22px; }
 .settings-form { grid-template-columns: 1fr; max-width: 520px; }
 .transaction-form label, .settings-form label { color: #6f665d; display: grid; font-size: 12px; gap: 6px; }
 .line-editor { display: grid; gap: 8px; grid-column: 1 / -1; }
 .line-editor > div { display: grid; gap: 8px; grid-template-columns: 1fr 90px; }
 .transaction-form .button, .settings-form .button { justify-self: start; }
+.form-note { color: #6f665d; font-size: 13px; grid-column: 1 / -1; line-height: 1.5; margin: 0; }
+.account-loading { color: #8d857a; font-family: 'DM Mono'; font-size: 12px; padding: 80px var(--gutter); text-align: center; }
+.account-auth { display: flex; justify-content: center; padding: 10px var(--gutter) 80px; }
+.account-auth .auth-card { margin: 0 auto; }
+.account-switch { color: #6f665d; font-size: 14px; margin: 18px 0 0; }
+.account-switch a { color: var(--clay); text-decoration: underline; }
+.sample-accounts { color: #6f665d; font-size: 13px; margin-top: 22px; }
+.sample-accounts summary { cursor: pointer; font-family: 'DM Mono'; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.sample-accounts ul { display: grid; gap: 6px; margin: 12px 0 0; padding: 0; list-style: none; }
+.sample-accounts code { font-family: 'DM Mono'; }
+.account-layout { display: grid; gap: 22px; margin: auto; max-width: var(--page); padding: 12px var(--gutter) 80px; }
+.account-heading { align-items: end; display: flex; justify-content: space-between; gap: 16px; }
+.account-heading h2 { font-family: Fraunces, serif; font-size: clamp(42px, 6vw, 68px); font-weight: 500; letter-spacing: -.04em; line-height: .9; margin: 0; }
+.points-card { background: #292622; color: #fff9ed; display: grid; gap: 6px; padding: 28px; }
+.points-card span { font-family: 'DM Mono'; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+.points-card strong { font-family: Fraunces, serif; font-size: 72px; font-weight: 500; letter-spacing: -.05em; line-height: .9; }
+.points-card p { color: #d9d0c4; margin: 0; max-width: 560px; }
+.account-grid { display: grid; gap: 22px; grid-template-columns: 1fr 1fr; }
+.account-panel { background: #fffaf2; border: 1px solid #e7e1d8; padding: 22px; }
+.account-panel h3 { font-family: Fraunces, serif; font-size: 28px; font-weight: 500; margin: 0 0 6px; }
+.account-panel > p { color: #6f665d; margin: 0 0 16px; }
+.account-form { display: grid; gap: 12px; }
+.account-form label, .account-line { color: #6f665d; display: grid; font-size: 12px; gap: 6px; }
+.account-form input, .account-form select, .account-line select, .account-line input { background: #fff; border: 1px solid #ddd4c8; border-radius: 4px; color: var(--ink); font: 14px 'DM Sans'; padding: 8px; width: 100%; }
+.account-line { grid-template-columns: 1fr 90px; }
+.account-form .button { justify-self: start; }
+.check-line { align-items: center; grid-template-columns: 18px 1fr; }
+.account-form .check-line input { height: 16px; padding: 0; width: 16px; }
+.underlined-link { align-items: center; display: inline-flex; gap: 6px; }
+@media (max-width: 850px) { .account-grid { grid-template-columns: 1fr; }.points-card strong { font-size: 56px; } }
 .status.paid_online { background: #dbe8ca; color: #63834d; }
 .status.in_person { background: #f8edca; color: #9b7831; }
 .status.unpaid { background: #f3d8cf; color: #a35f4c; }

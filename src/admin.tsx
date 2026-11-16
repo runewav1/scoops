@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { ArrowUpRight, Bell, ChevronRight, CircleHelp, ClipboardList, Coffee, IceCreamBowl, LayoutDashboard, LockKeyhole, LogIn, Menu, Package, Plus, Search, Settings2, Sparkles, Store } from 'lucide-react'
+import { ArrowUpRight, Bell, ChevronRight, CircleHelp, ClipboardList, Coffee, IceCreamBowl, LayoutDashboard, LockKeyhole, LogIn, Menu, Package, Plus, Search, Settings2, Sparkles, Store, Users } from 'lucide-react'
 import logo from '../assets/sns_logo.png'
-import { createTransaction, fetchCatalog, fetchReport, fetchSettings, fetchToppings, fetchTransactions, updateProduct, updateSettings, updateTransaction } from './lib/api'
-import { customerLabel, itemSummary, money, paymentLabels, serviceLabels, transactionWhen } from './lib/format'
+import { createTransaction, fetchCatalog, fetchCustomers, fetchReport, fetchSettings, fetchToppings, fetchTransactions, lookupCustomer, updateProduct, updateSettings, updateTransaction } from './lib/api'
+import { customerLabel, itemSummary, money, paymentLabels, productCode, serviceLabels, transactionWhen } from './lib/format'
 import { categoryLabels, recipeMarks } from './lib/diet'
-import type { PaymentStatus, Product, SalesReport, ServiceStatus, ShopSettings, Topping, Transaction } from './lib/models'
+import type { Customer, PaymentStatus, Product, SalesReport, ServiceStatus, ShopSettings, Topping, Transaction } from './lib/models'
 import { RouteLink, useRoute } from './router'
 
 const paymentOptions: PaymentStatus[] = ['paid_online', 'in_person', 'unpaid']
@@ -65,6 +65,7 @@ function AdminShell({ onSignOut }: { onSignOut: () => void }) {
   const reload = () => { fetchReport().then(setReport).catch(() => setReport(null)) }
   useEffect(() => { reload() }, [path])
   const page = path.startsWith('/admin/transactions') ? <TransactionsPage onChange={reload} />
+    : path.startsWith('/admin/customers') ? <CustomersPage />
     : path.startsWith('/admin/catalog') ? <CatalogPage />
     : path.startsWith('/admin/toppings') ? <ToppingsAdminPage />
     : path.startsWith('/admin/settings') ? <SettingsPage />
@@ -79,6 +80,7 @@ function AdminShell({ onSignOut }: { onSignOut: () => void }) {
         <div className="admin-nav-label">Workspace</div>
         <RouteLink to="/admin" className={`admin-link${path === '/admin' ? ' active' : ''}`}><LayoutDashboard size={17} /> Overview</RouteLink>
         <RouteLink to="/admin/transactions" className={`admin-link${path.startsWith('/admin/transactions') ? ' active' : ''}`}><ClipboardList size={17} /> Transactions {report && <b className="nav-count">{report.transactionCount}</b>}</RouteLink>
+        <RouteLink to="/admin/customers" className={`admin-link${path.startsWith('/admin/customers') ? ' active' : ''}`}><Users size={17} /> Customers</RouteLink>
         <RouteLink to="/admin/catalog" className={`admin-link${path.startsWith('/admin/catalog') ? ' active' : ''}`}><Package size={17} /> Catalog</RouteLink>
         <RouteLink to="/admin/toppings" className={`admin-link${path.startsWith('/admin/toppings') ? ' active' : ''}`}><Coffee size={17} /> Toppings</RouteLink>
         <div className="admin-nav-label settings-label">Manage</div>
@@ -169,7 +171,7 @@ function TransactionRow({ transaction }: { transaction: Transaction }) {
   return (
     <div className="order-row">
       <span className={`order-icon ${transaction.serviceStatus}`}>{transaction.serviceStatus === 'new' ? <Sparkles size={15} /> : <IceCreamBowl size={15} />}</span>
-      <span className="order-details"><strong>{transaction.code} · {customerLabel(transaction)}</strong><small>{itemSummary(transaction.items)}</small></span>
+      <span className="order-details"><strong>{transaction.code} · {customerLabel(transaction)}</strong><small>{itemSummary(transaction.items)}</small><small>{transaction.phoneNumber} · {transaction.allergies} · {transaction.customerPoints} pts</small></span>
       <span className={`status ${transaction.paymentStatus}`}>{paymentLabels[transaction.paymentStatus]}</span>
       <span className="order-time">{transactionWhen(transaction.createdAt)}</span>
     </div>
@@ -194,12 +196,12 @@ function TransactionsPage({ onChange }: { onChange: () => void }) {
       <TransactionForm products={products} onCreated={async () => { await load(); onChange() }} />
       <div className="table-wrap">
         <table className="data-table">
-          <thead><tr><th>When</th><th>Name</th><th>Items</th><th>Total</th><th>Payment</th><th>Counter</th></tr></thead>
+          <thead><tr><th>When</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Counter</th></tr></thead>
           <tbody>
             {transactions.map((transaction) => (
               <tr key={transaction.id}>
                 <td>{transactionWhen(transaction.createdAt)}<small>{transaction.code}</small></td>
-                <td>{customerLabel(transaction)}</td>
+                <td>{customerLabel(transaction)}<small>{transaction.phoneNumber}</small><small>{transaction.allergies} · {transaction.customerPoints} pts</small></td>
                 <td>{itemSummary(transaction.items)}</td>
                 <td>{money.format(transaction.total)}</td>
                 <td><select value={transaction.paymentStatus} onChange={(event) => saveStatus(transaction, { paymentStatus: event.target.value as PaymentStatus })}>{paymentOptions.map((status) => <option value={status} key={status}>{paymentLabels[status]}</option>)}</select></td>
@@ -214,19 +216,43 @@ function TransactionsPage({ onChange }: { onChange: () => void }) {
 }
 
 function TransactionForm({ products, onCreated }: { products: Product[]; onCreated: () => Promise<void> }) {
-  const [firstInitial, setFirstInitial] = useState('')
+  const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
+  const [phoneNumber, setPhoneNumber] = useState('')
+  const [allergies, setAllergies] = useState('None')
+  const [knownCustomer, setKnownCustomer] = useState<Customer | null>(null)
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>('in_person')
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus>('new')
   const [lines, setLines] = useState<Array<{ productId: string; quantity: number }>>([{ productId: '', quantity: 1 }])
   const [error, setError] = useState('')
+  const lookup = async (value: string) => {
+    const digits = value.replace(/\D/g, '')
+    if (digits.length < 10) {
+      setKnownCustomer(null)
+      return
+    }
+    try {
+      const result = await lookupCustomer(value)
+      setKnownCustomer(result.customer)
+      if (result.customer) {
+        setFirstName(result.customer.firstName)
+        setLastName(result.customer.lastName)
+        setAllergies(result.customer.allergies)
+      }
+    } catch {
+      setKnownCustomer(null)
+    }
+  }
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setError('')
     try {
-      await createTransaction({ firstInitial, lastName, paymentStatus, serviceStatus, items: lines.filter((line) => line.productId) })
-      setFirstInitial('')
+      await createTransaction({ firstName, lastName, phoneNumber, allergies, paymentStatus, serviceStatus, items: lines.filter((line) => line.productId) })
+      setFirstName('')
       setLastName('')
+      setPhoneNumber('')
+      setAllergies('None')
+      setKnownCustomer(null)
       setLines([{ productId: products[0]?.id ?? '', quantity: 1 }])
       await onCreated()
     } catch (reason) {
@@ -235,16 +261,19 @@ function TransactionForm({ products, onCreated }: { products: Product[]; onCreat
   }
   return (
     <form className="transaction-form" onSubmit={submit}>
-      <label>Initial<input maxLength={1} value={firstInitial} onChange={(event) => setFirstInitial(event.target.value)} required /></label>
-      <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} required /></label>
+      <label>Phone<input value={phoneNumber} onChange={(event) => { setPhoneNumber(event.target.value); setKnownCustomer(null) }} onBlur={() => lookup(phoneNumber)} required /></label>
+      <label>First name<input value={firstName} onChange={(event) => setFirstName(event.target.value)} required readOnly={Boolean(knownCustomer)} /></label>
+      <label>Last name<input value={lastName} onChange={(event) => setLastName(event.target.value)} required readOnly={Boolean(knownCustomer)} /></label>
+      <label>Allergies<input value={allergies} onChange={(event) => setAllergies(event.target.value)} required readOnly={Boolean(knownCustomer)} /></label>
       <label>Payment<select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as PaymentStatus)}>{paymentOptions.map((status) => <option key={status} value={status}>{paymentLabels[status]}</option>)}</select></label>
       <label>Counter<select value={serviceStatus} onChange={(event) => setServiceStatus(event.target.value as ServiceStatus)}>{serviceOptions.map((status) => <option key={status} value={status}>{serviceLabels[status]}</option>)}</select></label>
       <div className="line-editor">
+        {knownCustomer && <p className="form-note">{knownCustomer.firstName} {knownCustomer.lastName} already has an account, with {knownCustomer.points} points. This order will be added to it.</p>}
         {lines.map((line, index) => (
           <div key={index}>
             <select value={line.productId} onChange={(event) => setLines(lines.map((item, itemIndex) => itemIndex === index ? { ...item, productId: event.target.value } : item))} required>
               <option value="">Flavor</option>
-              {products.map((product) => <option key={product.id} value={product.id}>{product.name} · {categoryLabels[product.category]} · {money.format(product.price)}</option>)}
+              {products.map((product) => <option key={product.id} value={product.id}>{productCode(product.productNumber)} · {product.name} · {categoryLabels[product.category]} · {money.format(product.price)}</option>)}
             </select>
             <input type="number" min={1} max={12} value={line.quantity} onChange={(event) => setLines(lines.map((item, itemIndex) => itemIndex === index ? { ...item, quantity: Number(event.target.value) } : item))} />
           </div>
@@ -270,11 +299,41 @@ function CatalogPage() {
           <tbody>
             {products.map((product) => (
               <tr key={product.id}>
-                <td>{product.name}{product.isFlavorOfWeek && <small>flavor of the week</small>}<small>{categoryLabels[product.category]}</small></td>
+                <td>{productCode(product.productNumber)} · {product.name}{product.isFlavorOfWeek && <small>flavor of the week</small>}<small>{categoryLabels[product.category]}</small></td>
                 <td>{recipeMarks(product).join(' · ')}</td>
                 <td>{money.format(product.price)}</td>
                 <td><button className="underlined-link" onClick={() => updateProduct(product.id, { isAvailable: !product.isAvailable }).then(load)}>{product.isAvailable ? 'Available' : 'Sold out'}</button></td>
                 <td>{!product.isFlavorOfWeek && <button className="underlined-link" onClick={() => updateProduct(product.id, { isFlavorOfWeek: true }).then(load)}>Set flavor of the week</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
+function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [error, setError] = useState('')
+  useEffect(() => { fetchCustomers().then((result) => setCustomers(result.customers)).catch((reason: Error) => setError(reason.message)) }, [])
+  return (
+    <>
+      <div className="admin-page-intro"><div><h2>Customers</h2><p>A customer can have many orders. Each order has its own scoops, and each scoop points at a product.</p></div></div>
+      {error && <p className="auth-error">{error}</p>}
+      <div className="table-wrap">
+        <table className="data-table">
+          <thead><tr><th>ID</th><th>Name</th><th>Phone</th><th>Allergies</th><th>Points</th><th>Orders</th><th>Sign-in</th></tr></thead>
+          <tbody>
+            {customers.map((customer) => (
+              <tr key={customer.id}>
+                <td>{customer.id}</td>
+                <td>{customer.firstName} {customer.lastName}</td>
+                <td>{customer.phoneNumber}</td>
+                <td>{customer.allergies}</td>
+                <td>{customer.points}</td>
+                <td>{customer.orderCount}</td>
+                <td>{customer.canSignIn ? 'Yes' : 'Counter only'}</td>
               </tr>
             ))}
           </tbody>
@@ -323,7 +382,8 @@ function HelpPage() {
   return (
     <section className="interior-copy">
       <h2>Help center</h2>
-      <p>Ring up whoever is at the counter: what they ordered, how they paid, and when it’s ready.</p>
+      <p>Ring up a customer by phone. If the number is new, add their name and allergies. Paid orders add Scoops & Smiles Points: 10 points for each dollar.</p>
+      <p>Customers can also sign in on the site, see those points, and place a pickup order.</p>
       <p>Update hours and the address when they change. Pick a new flavor of the week when you want a different one out front.</p>
     </section>
   )
