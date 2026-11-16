@@ -17,6 +17,8 @@ function attachStaffApi(middlewares: ViteDevServer['middlewares']) {
   })
 }
 
+const shareTunnel = process.env.SCOOPS_TUNNEL === '1'
+
 export default defineConfig({
   plugins: [
     react(),
@@ -30,4 +32,14 @@ export default defineConfig({
       },
     },
   ],
+  server: {
+    allowedHosts: ['.trycloudflare.com'],
+    ...(shareTunnel ? {
+      hmr: { overlay: false },
+      ws: { protocol: 'wss' as const, clientPort: 443 },
+    } : {}),
+  },
+  preview: {
+    allowedHosts: ['.trycloudflare.com'],
+  },
 })

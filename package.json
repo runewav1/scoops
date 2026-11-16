@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "tunnel": "node scripts/tunnel.mjs",
     "dev:server": "tsx watch server/index.ts",
     "auth:hash": "node server/hash-password.mjs",
     "build": "tsc -b && vite build",

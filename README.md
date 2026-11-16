@@ -31,6 +31,27 @@ pnpm auth:hash "use-a-long-unique-password"
 
 The browser never receives the password or its hash. `pnpm dev:server` still starts the same API on port 8787 when you want it without Vite.
 
+## Share a public link
+
+`pnpm tunnel` starts the site on this machine and opens a Cloudflare quick tunnel to it. Use it from the Omarchy home server after you SSH in. One session is enough. Leave that session open, or start the command inside `tmux` if you want the link to stay up after you disconnect. Closing it stops the tunnel. The printed `https://….trycloudflare.com` address changes every time you start it.
+
+```bash
+pnpm install
+pnpm tunnel
+```
+
+The quick tunnel does not use a Cloudflare account, API token, or login. Your SSH login is the only login for the server. On the site, `/admin` still uses the staff username and password hash in `.env`. Customer accounts still use a phone number and password. Anyone who has the public link can open the shop and sign up. The link does not ask for another password.
+
+Omarchy already has `cloudflared` in the Arch extra repository:
+
+```bash
+sudo pacman -S cloudflared
+```
+
+Windows: `winget install --id Cloudflare.cloudflared`. Mac: `brew install cloudflared`. The shop needs Node.js 22 or newer because the database uses `node:sqlite`.
+
+You can still use two terminals instead of `pnpm tunnel`. In the first, run `pnpm dev`. In the second, run `cloudflared tunnel --url` with the local port Vite printed. `pnpm tunnel` also tells Vite to accept `*.trycloudflare.com` and to connect its refresh socket on port 443, which is the port the public link uses.
+
 ## Integration boundary
 
 The shop data lives in a local SQLite file at `data/scoops.sqlite`, created with Node’s built-in `node:sqlite`. Tables and the catalog are created on the first catalog or settings query.
